@@ -1,7 +1,7 @@
 // api/proxy.js
 export const config = { runtime: 'edge' };
 
-const SMN_WHITELIST = 'https://smn.conagua.gob.mx'; // Ajusta si el dominio real es distinto
+const SMN_WHITELIST = 'https://smn.conagua.gob.mx/es/'; // Ajusta si el dominio real es distinto
 
 export default async function handler(req) {
   const targetUrl = new URL(req.url).searchParams.get('url');
