@@ -1,7 +1,7 @@
 // api/proxy.js
 export const config = { runtime: 'edge' };
 
-const SMN_WHITELIST = 'https://smn.conagua.gob.mx/es/'; // Ajusta si el dominio real es distinto
+const SMN_WHITELIST = 'https://smn.conagua.gob.mx';
 
 export default async function handler(req) {
   const targetUrl = new URL(req.url).searchParams.get('url');
@@ -19,9 +19,9 @@ export default async function handler(req) {
   return new Response(text, {
     status: res.status,
     headers: {
-      'Content-Type': res.headers.get('content-type') || 'application/json',
+      'Content-Type': 'application/json; charset=utf-8',
       'Access-Control-Allow-Origin': '*',
-      'Cache-Control': 'public, max-age=300, stale-while-revalidate=600'
+      'Cache-Control': 'public, max-age=900, stale-while-revalidate=1800' // 15 min
     }
   });
 }
