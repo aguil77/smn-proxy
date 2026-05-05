@@ -1,48 +1,49 @@
 // api/proxy.js
-export const config = { runtime: 'edge' };
+// NO uses runtime: 'edge' - usaremos Node.js por defecto
 
 const SMN_WHITELIST = 'https://smn.conagua.gob.mx';
 
-export default async function handler(req) {
-  const targetUrl = new URL(req.url).searchParams.get('url');
-  
-  // Validación de dominio
-  try {
-    const parsed = new URL(targetUrl);
-    if (parsed.origin !== SMN_WHITELIST) {
-      return new Response('Dominio no permitido', { status: 403 });
-    }
-  } catch {
-    return new Response('URL inválida', { status: 400 });
+export default async function handler(req, res) {
+  // Permitir CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Cache-Control', 'public, max-age=900');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
 
-  // Petición al SMN SIN forzar encoding que interfiera con gzip
-  const res = await fetch(targetUrl, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      // NO agregamos Accept-Encoding: Vercel Edge maneja gzip automáticamente
-    }
-  });
+  const targetUrl = req.query.url;
   
-  // Obtener el cuerpo como texto (Vercel descomprime automáticamente)
-  const text = await res.text();
-  
-  // Validar que sea JSON válido antes de enviar
-  try {
-    JSON.parse(text); // Solo para validar, no guardamos el resultado
-  } catch (e) {
-    // Si no es JSON, podría ser HTML de error del SMN
-    console.error('Respuesta no JSON del SMN:', text.slice(0, 200));
+  if (!targetUrl?.startsWith(SMN_WHITELIST)) {
+    return res.status(403).json({ error: 'Dominio no permitido' });
   }
-  
-  return new Response(text, {
-    status: res.status,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Cache-Control': 'public, max-age=900, stale-while-revalidate=1800'
+
+  try {
+    // Fetch con headers que evitan gzip
+    const response = await fetch(targetUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+        'Accept': 'application/json, text/plain',
+        // Importante: NO enviar Accept-Encoding para que el servidor no comprima
+      }
+    });
+
+    const text = await response.text();
+    
+    // Validar que sea JSON
+    try {
+      JSON.parse(text);
+    } catch (e) {
+      console.error('JSON inválido:', text.substring(0, 100));
     }
-  });
+
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    return res.status(response.status).send(text);
+    
+  } catch (error) {
+    console.error('Error en proxy:', error);
+    return res.status(500).json({ error: error.message });
+  }
 }
