@@ -1,4 +1,4 @@
-// api/proxy.js - Node.js 24.x
+// api/proxy.js - Soporte para method=1,2,3,4
 import zlib from 'node:zlib';
 import { promisify } from 'node:util';
 
